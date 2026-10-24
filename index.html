@@ -22,9 +22,14 @@
       <img src="icons/icon.svg" alt="" width="28" height="28">
       <span>Chit<b>Wise</b></span>
     </a>
-    <button class="icon-btn" data-action="new-chit" aria-label="Add a chit">
-      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" fill="none"/></svg>
-    </button>
+    <div style="display:flex;gap:8px">
+      <a class="icon-btn" href="#/about" aria-label="How ChitWise works" title="How it works">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.4"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg>
+      </a>
+      <button class="icon-btn" data-action="new-chit" aria-label="Add a chit">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" fill="none"/></svg>
+      </button>
+    </div>
   </header>
 
   <main id="app" tabindex="-1"></main>
