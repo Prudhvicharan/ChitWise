@@ -6,7 +6,7 @@
    ========================================================= */
 
 const KEY = 'chitwise:v1';
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.1.0';
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const app = $('#app');
@@ -60,6 +60,7 @@ function normChit(c) {
   const months = Math.max(1, +c.months || members);
   return {
     id: c.id || uid(),
+    ...(c.demo ? { demo: true } : {}),
     name: String(c.name || 'Chit'),
     organizer: String(c.organizer || ''),
     pot, members, months,
@@ -101,27 +102,27 @@ function persist() {
   try { localStorage.setItem(KEY, JSON.stringify(state)); }
   catch (e) { toast('Could not save — browser storage is blocked'); }
 }
-/** First launch: preload the chit the app was built for, so it's useful immediately. */
-function seed() {
-  return normalize({
-    chits: [{
-      name: '₹24L Chitti',
-      organizer: '',
-      pot: 2400000, members: 12, months: 12, installment: 200000,
-      startMonth: '2026-08', dueDay: 10,
-      notes: '12 members, 12 rounds. Thopudu split equally among all 12; winners still get thopudu.',
-      rounds: [
-        { n: 1, type: 'auction', winner: 'other', bid: 2148000, paid: true, estimate: true, note: 'Paid ~₹1,79,000 — not 100% sure.' },
-        { n: 2, type: 'owner', winner: 'other', paid: true },
-        { n: 3, type: 'auction', winner: 'other', bid: 1974000, paid: true },
-      ],
-    }],
-    meta: {},
+/** Made-up chit for "Try with sample data": started 4 months ago, 4 rounds recorded. */
+function sampleChit() {
+  const d = new Date();
+  d.setMonth(d.getMonth() - 4);
+  return normChit({
+    demo: true,
+    name: 'Sample chit',
+    organizer: 'Demo organizer',
+    pot: 1000000, members: 10, months: 10, installment: 100000,
+    startMonth: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`, dueDay: 10,
+    notes: 'Sample data to explore the app. Remove it from the home screen when you are ready.',
+    rounds: [
+      { n: 1, type: 'owner', winner: 'other', paid: true },
+      { n: 2, type: 'auction', winner: 'other', winnerName: 'Ravi', bid: 850000, paid: true },
+      { n: 3, type: 'auction', winner: 'other', winnerName: 'Lakshmi', bid: 880000, paid: true },
+      { n: 4, type: 'lucky', winner: 'other', winnerName: 'Suresh', paid: true },
+    ],
   });
 }
 
-let state = load();
-if (!state) { state = seed(); persist(); }
+let state = load() || normalize({ chits: [], meta: {} });
 const getChit = id => state.chits.find(c => c.id === id);
 
 /* ---------- Chit math ----------
@@ -250,26 +251,51 @@ const coinsArt = `<svg class="coins" viewBox="0 0 150 150" aria-hidden="true">
 </svg>`;
 
 /* ---------- Views ---------- */
+/** Landing page: shown to first-time visitors (no chits yet) and at #/about. */
+function renderWelcome() {
+  const hasChits = state.chits.length > 0;
+  const ctas = hasChits
+    ? `<a class="btn primary" href="#/">Go to my chits</a>`
+    : `<button class="btn primary" data-action="new-chit">Add my first chit</button>
+       <button class="btn" data-action="load-sample">Try with sample data</button>`;
+  app.innerHTML = `
+    <section class="hero landing-hero">
+      ${coinsArt}
+      <div class="label">Chit fund tracker</div>
+      <h1>Your chits, finally clear.</h1>
+      <p class="sub">Track every chitti month by month: what you paid, the thopudu you got back, when you took the pot, and what's still left to pay.</p>
+      <div class="btn-row">${ctas}</div>
+      ${hasChits ? '' : '<p class="small" style="margin:12px 0 0;opacity:.8">Already use ChitWise on another device? <a href="#/backup">Import your backup</a>.</p>'}
+    </section>
+
+    <h2 class="section">How a chit works</h2>
+    <ol class="steps">
+      <li><b>Everyone pays in.</b> Say 10 members pay ₹1,00,000 each month. That makes a ₹10,00,000 pot.</li>
+      <li><b>The lowest bid takes the pot.</b> Members bid for how little they'll accept. If the winner takes ₹8,50,000, the ₹1,50,000 discount is split among all 10 as <i>thopudu</i>: ₹15,000 each.</li>
+      <li><b>You pay less.</b> Your payment that month is ₹1,00,000 − ₹15,000 = ₹85,000.</li>
+      <li><b>Repeat until everyone has taken it once.</b> In some months the organizer takes the pot or a name is drawn by lucky dip. Nobody bids then, so everyone pays in full.</li>
+    </ol>
+
+    <h2 class="section">What ChitWise does</h2>
+    <div class="features">
+      <div class="card"><div class="ficon">₹</div><h3>Month-by-month record</h3><p>Log each auction, the organizer's month or a lucky dip. Enter the winning bid or what you paid, and ChitWise works out the other.</p></div>
+      <div class="card"><div class="ficon">%</div><h3>Thopudu & savings</h3><p>See how much you've saved, the thopudu you've earned, and what's left to pay, with estimates for future months.</p></div>
+      <div class="card"><div class="ficon">?</div><h3>"What if I take it?"</h3><p>Pick a month and a bid to see your net gain, compared with waiting until the last month, plus the yearly rate.</p></div>
+      <div class="card"><div class="ficon">+</div><h3>Any chit, many chits</h3><p>Any pot, any number of members and months, an optional organizer commission, and as many chits side by side as you like.</p></div>
+    </div>
+
+    <div class="card privacy">
+      <h3>Private by design</h3>
+      <p>No sign-up and no server. Your chits are saved only in this browser on this device. Nobody else can see them, not even the person who built the app. Download a backup file to move your data to another phone or computer.</p>
+    </div>
+
+    ${hasChits ? '' : `<div class="btn-row" style="margin-top:20px">${ctas}</div>`}
+    <p class="small muted" style="text-align:center;margin-top:22px">Works offline. Install it from your browser menu → <b>Add to Home Screen</b>.</p>
+  `;
+}
+
 function renderHome() {
-  if (!state.chits.length) {
-    app.innerHTML = `
-      <div class="empty">
-        <svg class="art" viewBox="0 0 150 150" aria-hidden="true">
-          ${Array.from({ length: 12 }, (_, i) => {
-            const a = (i / 12) * Math.PI * 2 - Math.PI / 2;
-            return `<circle cx="${75 + Math.cos(a) * 52}" cy="${75 + Math.sin(a) * 52}" r="6" fill="var(--accent)" opacity="${0.3 + (i % 3) * 0.25}"/>`;
-          }).join('')}
-          <circle cx="75" cy="75" r="28" fill="var(--primary)"/>
-        </svg>
-        <h2>No chits yet</h2>
-        <p class="muted">Add a chit to start tracking payments, thopudu and your payout.</p>
-        <div class="btn-row" style="justify-content:center;max-width:360px;margin:16px auto 0">
-          <button class="btn primary" data-action="new-chit">Add a chit</button>
-          <a class="btn" href="#/backup">Import backup</a>
-        </div>
-      </div>`;
-    return;
-  }
+  if (!state.chits.length) return renderWelcome();
 
   const all = state.chits.map(c => ({ c, t: compute(c) }));
   const paid = sum(all, x => x.t.paid);
@@ -316,7 +342,12 @@ function renderHome() {
       </div>
     </section>
 
-    ${needsBackup ? `<div class="banner">
+    ${state.chits.some(c => c.demo) ? `<div class="banner">
+      <span>You're looking at sample data.</span>
+      <button class="btn sm accent" data-action="clear-sample">Remove sample</button>
+    </div>` : ''}
+
+    ${needsBackup && state.chits.some(c => !c.demo) ? `<div class="banner">
       <span>You have changes that aren't backed up.</span>
       <button class="btn sm accent" data-action="export-json">Back up</button>
     </div>` : ''}
@@ -532,10 +563,10 @@ function openRound(id, n) {
 
     <div class="grid2" data-show="auction">
       <label class="field"><span>Winning bid (₹ taken)</span>
-        <input type="number" name="bid" inputmode="numeric" min="0" max="${c.pot}" value="${r.bid ?? ''}" placeholder="e.g. 1974000">
+        <input type="number" name="bid" inputmode="numeric" min="0" max="${c.pot}" value="${r.bid ?? ''}" placeholder="e.g. 850000">
       </label>
       <label class="field"><span>You pay this month</span>
-        <input type="number" name="pay" inputmode="numeric" min="0" ${getsDiv ? '' : 'disabled'} placeholder="e.g. 164500">
+        <input type="number" name="pay" inputmode="numeric" min="0" ${getsDiv ? '' : 'disabled'} placeholder="e.g. 85000">
       </label>
     </div>
     <div class="hint small muted" data-show="auction" style="margin-top:6px">Know only one? Fill either — the other is worked out.</div>
@@ -833,7 +864,7 @@ function renderBackup() {
       <h3 style="margin:0 0 6px;font-size:1rem">Danger zone</h3>
       <button class="btn danger block" data-action="wipe">Erase all data on this device</button>
     </div>
-    <p class="small muted" style="text-align:center;margin-top:18px">ChitWise v${APP_VERSION}</p>
+    <p class="small muted" style="text-align:center;margin-top:18px"><a href="#/about">About ChitWise</a> · v${APP_VERSION}</p>
   `;
   $('#importInput').addEventListener('change', e => {
     const file = e.target.files[0];
@@ -857,6 +888,14 @@ document.addEventListener('click', e => {
       if (r) { r.paid = true; r.paidOn = r.paidOn || today(); save(); rerender(); toast('Marked as paid'); }
       break;
     }
+    case 'load-sample':
+      state.chits.push(sampleChit()); persist(); location.hash = '#/'; rerender();
+      toast('Sample chit added — tap it to explore');
+      break;
+    case 'clear-sample':
+      state.chits = state.chits.filter(c => !c.demo); persist(); rerender();
+      toast('Sample removed');
+      break;
     case 'export-json': exportJSON(); break;
     case 'share-json': shareJSON(); break;
     case 'export-csv': exportCSV(); break;
@@ -879,6 +918,7 @@ function route() {
   route.current = parts[0] || 'home';
   if (parts[0] === 'chit' && parts[1]) renderChit(parts[1]);
   else if (parts[0] === 'backup') renderBackup();
+  else if (parts[0] === 'about') renderWelcome();
   else renderHome();
   $$('.tabbar [data-tab]').forEach(a => a.classList.toggle('active', a.dataset.tab === (route.current === 'backup' ? 'backup' : 'home')));
 }

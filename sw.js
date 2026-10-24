@@ -1,6 +1,6 @@
 // ChitWise service worker — caches the app so it works offline.
 // Bump CACHE when you change any app file so phones pick up the update.
-const CACHE = 'chitwise-v1';
+const CACHE = 'chitwise-v2';
 const ASSETS = [
   './',
   './index.html',
